@@ -1,0 +1,107 @@
+#!/bin/bash -e
+
+declare PSI_CACHE=${PSI_CACHE:-/var/cache/psi}
+declare PSI_LIB=${PSI_LIB:-/usr/local/lib/psi/psilib}
+
+declare tmpdir=$(mktemp -d); trap "rm -rf $tmpdir || sudo rm -rf $tmpdir" EXIT
+declare -A dynvars=()
+declare -a lines=() tokens=()
+declare src line cmdline cmd var cwd
+declare -i linenum=0
+declare outfile=
+
+if test "$1" = --help; then
+  echo "Usage: psic [-o <out-file>] <src-file>"
+  exit
+elif test "$1" = -o; then
+  outfile="$2"
+  shift 2 || { echo "missing -o option value" >&2; exit 1; }
+elif [[ "$1" =~ -o.+ ]]; then
+  outfile="${1:2}"
+  shift
+elif test $# -eq 0; then
+  echo "missing source file" >&2
+  exit 1
+elif test $# -gt 1; then
+  echo "unexpected argument: $2" >&2
+  exit 2
+elif ! test -e "$1"; then
+  echo "$1 does not exist" >&2
+  exit 101
+fi
+
+src=$1
+
+declare PSI_DEB=$tmpdir/deb
+declare PSI_SCRATCH=$tmpdir/scratch
+declare PSI_TARGET=$tmpdir/target
+declare PSI_FILTER=
+
+export PSI_CACHE PSI_DEB PSI_FILTER PSI_LIB PSI_SCRATCH PSI_TARGET
+
+mkdir $PSI_DEB $PSI_SCRATCH $PSI_TARGET
+readarray -t lines < "$src"
+
+source "$PSI_LIB"
+
+for fn in $(declare -F | cut -f3 -d" " | grep ^psi-dynvar-); do
+  var=$(cut -f3- -d- <<< $fn)
+  dynvars[$var]=$fn
+done
+
+# wrangle streams to avoid unwanted output
+if test -z "$outfile"; then
+  exec 3>&1 1>&2
+fi
+
+# as a convenience, run from an empty directory to avoid glob matching
+cwd=$(pwd)
+mkdir $tmpdir/empty; cd $tmpdir/empty
+
+for line in "${lines[@]}"; do
+  linenum=$((linenum+1))
+  cmdline="$line"
+
+  test "${cmdline:0:1}" = "#" && continue
+  test "$cmdline" || continue
+
+  cmd=${cmdline%% *}
+  cmdargs=${cmdline#* }
+
+  if test "$(type -t psi-$cmd)" = function; then
+    read -ra tokens <<< "$cmdline"
+
+    tokens[0]=psi-${tokens[0]}
+
+    for i in $(seq 1 $((${#tokens[@]}-1))); do
+      for var in ${!dynvars[@]}; do
+        if grep -q \${$var} <<< "${tokens[$i]}"; then
+          tokens[$i]=$(sed -e s/\\\${$var}/$(${dynvars[$var]})/g <<< "${tokens[$i]}")
+        fi
+      done
+
+      tokens[$i]="$(printf '%q' "${tokens[$i]}")"
+    done
+
+    eval "${tokens[@]}" || {
+      echo "ERROR: [$src:$linenum] $line" >&2
+      exit 200
+    }
+  else
+    echo "$line" > $tmpdir/shell
+    source $tmpdir/shell || {
+      echo "ERROR: [$src:$linenum] $line" >&2
+      exit 200
+    }
+  fi
+done
+
+# restore original directory before writing output
+cd "$cwd"
+
+if test "$outfile"; then
+  tar czS -C $PSI_TARGET . > "$outfile"
+  echo "successfully built image in $outfile"
+else
+  tar czS -C $PSI_TARGET . >&3
+fi
