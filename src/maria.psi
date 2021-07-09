@@ -1,0 +1,25 @@
+debootstrap --components=main,universe --include=mariadb-server focal
+
+psi
+
+copy /etc/mysql
+copy /usr/bin/dash
+copy /usr/bin/sed
+copy /usr/bin/sh
+copy /usr/bin/mysql*
+copy /usr/bin/my_*
+copy /usr/bin/which
+copy /usr/lib/x86_64-linux-gnu/ld-*
+copy /usr/lib/x86_64-linux-gnu/libpcre2-8.so.0
+copy /usr/lib64/ld-*
+copy /usr/sbin/mysqld*
+copy /usr/share/mysql
+
+copy-coreutils
+copy-libs
+
+empty /etc/os-release
+append /etc/os-release NAME="MariaDB"
+append /etc/os-release VERSION=${MARIADB_VERSION}
+append /etc/os-release ID=maria
+append /etc/os-release PRETTY_NAME="MariaDB v${MARIADB_VERSION}"
