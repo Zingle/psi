@@ -1,0 +1,1 @@
+debootstrap --components=main,universe --include=libacl1,libargon2-0,libattr1,libc6,libgcc1,libpcre3,libssl1.1,libicu66,php7.4-fpm,php-bcmath,php-bz2,php-curl,php-mbstring,php-mysql,php-pgsql,php-soap,php-sqlite3,php-xml focal
