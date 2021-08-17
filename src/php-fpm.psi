@@ -94,6 +94,7 @@ link /usr/lib/x86_64-linux-gnu/libicuio.so.63 libicuio.so.66
 link /usr/lib/x86_64-linux-gnu/libicui18n.so.63 libicui18n.so.66
 
 sed -i 's/^;\?pcre\.jit\b.*/pcre.jit=0/' $PSI_TARGET/etc/php/current/fpm/php.ini
+sed -i 's/^;\?pcre\.jit\b.*/pcre.jit=0/' $PSI_TARGET/etc/php/current/cli/php.ini
 sed -i 's/^error_log.*/error_log = syslog/' $PSI_TARGET/etc/php/current/fpm/php-fpm.conf
 sed -i 's/^;\?clear_env\b.*/clear_env = no/' $PSI_TARGET/etc/php/current/fpm/pool.d/www.conf
 
