@@ -1,0 +1,22 @@
+debootstrap focal
+
+psi
+
+wget -qO- https://nodejs.org/dist/v12.22.6/node-v12.22.6-linux-x64.tar.xz > $PSI_SCRATCH/nodejs.tar.xz
+mkdir $PSI_SCRATCH/nodejs
+tar xf $PSI_SCRATCH/nodejs.tar.xz --strip-components=1 -C $PSI_SCRATCH/nodejs
+(cd $PSI_SCRATCH/nodejs; find . -mindepth 1 -maxdepth 1 -type d -exec cp -rT {} $PSI_TARGET/usr/{} \;)
+
+copy /etc/ssl
+copy /usr/bin/dash
+copy /usr/bin/sh
+copy /usr/lib/x86_64-linux-gnu/ld-*
+copy /usr/lib64/ld-*
+
+copy-libs
+
+empty /etc/os-release
+append /etc/os-release NAME="Node.js"
+append /etc/os-release VERSION=${NODEJS_VERSION}
+append /etc/os-release ID=nodejs
+append /etc/os-release PRETTY_NAME="Node.js v${NODEJS_VERSION}"
